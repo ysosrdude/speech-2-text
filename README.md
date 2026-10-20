@@ -26,6 +26,10 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173), allow microphone access, and click **Start listening**.
 
+### StackBlitz note
+
+StackBlitz/WebContainer dev servers often fail to proxy to `api.cursor.com` (`socket hang up` / **502**). That is an environment network limit, not a bad API key. **Clone the repo and run `npm run dev` locally** (or deploy with a server-side proxy) for reliable Cursor API access.
+
 ### Scripts
 
 | Command           | Description              |

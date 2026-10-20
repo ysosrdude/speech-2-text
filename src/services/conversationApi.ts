@@ -87,8 +87,19 @@ async function cursorRequest<T>(path: string, init?: RequestInit): Promise<T> {
           ? payload.error
           : undefined
 
+    let message = payload.message ?? nested ?? `Cursor API request failed (${response.status})`
+
+    if (response.status === 502 && payload.code === 'proxy_unreachable') {
+      message = payload.message ?? message
+    } else if (response.status === 502) {
+      message =
+        'Dev proxy could not reach Cursor (502). On StackBlitz, run the app locally with npm run dev, or deploy a server-side proxy.'
+    } else if (response.status === 500 && payload.code === 'missing_token') {
+      message = payload.message ?? 'Missing VITE_API_TOKEN in .env — restart the dev server after adding it.'
+    }
+
     const error: ApiError = {
-      message: payload.message ?? nested ?? `Cursor API request failed (${response.status})`,
+      message,
       code: payload.code ?? String(response.status),
     }
     throw error
