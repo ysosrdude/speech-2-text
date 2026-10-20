@@ -1,5 +1,23 @@
+import type { ReactNode } from 'react'
 import { useConversationListener } from '../../hooks/useConversationListener'
-import { StatusBadge } from './StatusBadge'
+import type { ListenerStatus } from '../../types/conversation'
+import '../../styles/conversation.css'
+
+function statusLabel(
+  status: ListenerStatus,
+  listening: boolean,
+  isCapturing: boolean,
+): string {
+  if (listening && isCapturing && status === 'listening') return 'Listening'
+  const labels: Record<ListenerStatus, string> = {
+    idle: 'Ready',
+    listening: 'Listening',
+    processing: 'Thinking',
+    error: 'Error',
+    unsupported: 'Unsupported',
+  }
+  return labels[status]
+}
 
 export function ConversationPanel() {
   const {
@@ -19,107 +37,122 @@ export function ConversationPanel() {
   } = useConversationListener()
 
   const latestTurn = turns.at(-1)
+  const liveText =
+    interimTranscript || (isCapturing ? '…' : listening ? 'Waiting for your voice' : '')
+
+  const notices: Array<{ text: ReactNode; error?: boolean }> = []
+  if (!speechSupported) {
+    notices.push({
+      text: 'Speech recognition needs Chrome, Edge, or Safari on desktop.',
+    })
+  } else if (!apiConfigured) {
+    notices.push({
+      text: (
+        <>
+          Add <code>VITE_API_TOKEN</code> to <code>.env</code>, then restart the dev server.
+        </>
+      ),
+    })
+  }
+  if (errorMessage || speechError) {
+    notices.push({
+      error: true,
+      text: errorMessage ?? `Speech error: ${speechError}`,
+    })
+  }
 
   return (
     <section className="conversation" aria-live="polite">
-      <header className="conversation-header">
-        <div>
-          <h1>Live conversation</h1>
-          <p className="conversation-lead">
-            Speak naturally. When you pause, your words are sent for a text response on screen.
-          </p>
-        </div>
-        <StatusBadge status={status} listening={listening} isCapturing={isCapturing} />
+      <header className="conversation-intro">
+        <h1>Speak, pause, read</h1>
+        <p>Live speech is transcribed as you talk. When you stop, the app fetches a written reply.</p>
       </header>
 
-      {!speechSupported && (
-        <p className="conversation-alert" role="alert">
-          Speech recognition is not supported in this browser. Use Chrome, Edge, or Safari on desktop.
-        </p>
-      )}
-
-      {speechSupported && !apiConfigured && (
-        <p className="conversation-alert" role="alert">
-          Set <code>VITE_API_TOKEN</code> in a <code>.env</code> file (see <code>.env.example</code>
-          ), then restart <code>npm run dev</code>.
-        </p>
-      )}
-
-      {(errorMessage || speechError) && (
-        <p className="conversation-alert conversation-alert-error" role="alert">
-          {errorMessage ?? `Speech error: ${speechError}`}
-        </p>
-      )}
-
-      <div className="conversation-controls">
-        {!listening ? (
+      <div className="conversation-meta">
+        <div className="controls">
+          {listening ? (
+            <button type="button" className="btn btn--quiet" onClick={stopListening}>
+              Stop
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={startListening}
+              disabled={!speechSupported}
+            >
+              Start listening
+            </button>
+          )}
           <button
             type="button"
-            className="btn btn-primary"
-            onClick={startListening}
-            disabled={!speechSupported}
+            className="btn btn--quiet"
+            onClick={clearHistory}
+            disabled={turns.length === 0 && !lastTranscript}
           >
-            Start listening
+            Clear
           </button>
-        ) : (
-          <button type="button" className="btn btn-secondary" onClick={stopListening}>
-            Stop
-          </button>
-        )}
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={clearHistory}
-          disabled={turns.length === 0 && !lastTranscript}
-        >
-          Clear
-        </button>
+        </div>
+        <span className={`status status--${status}`} aria-label={`Status: ${statusLabel(status, listening, isCapturing)}`}>
+          <span className="status-dot" aria-hidden="true" />
+          {statusLabel(status, listening, isCapturing)}
+        </span>
       </div>
 
-      <div className="conversation-panels">
-        <article className="panel panel-live">
-          <h2>Live input</h2>
+      {notices.map((notice, index) => (
+        <p
+          key={index}
+          className={`notice${notice.error ? ' notice--error' : ''}`}
+          role="alert"
+        >
+          {notice.text}
+        </p>
+      ))}
+
+      <div className="stage">
+        <article className="card">
+          <h2 className="card-label">Live</h2>
           {listening ? (
-            <p className="panel-body panel-interim">
-              {interimTranscript || (isCapturing ? 'Listening…' : 'Waiting for speech…')}
+            <p className={`card-body card-body--live${liveText ? '' : ' card-body--muted'}`}>
+              {liveText || 'Listening…'}
             </p>
           ) : (
-            <p className="panel-body panel-muted">Press “Start listening” to begin.</p>
+            <p className="card-body card-body--muted">Press start when you are ready to talk.</p>
           )}
           {lastTranscript && (
-            <footer className="panel-footer">
-              <span className="panel-label">Last utterance</span>
-              <p>{lastTranscript}</p>
+            <footer className="card-foot">
+              <span>Last said</span>
+              {lastTranscript}
             </footer>
           )}
         </article>
 
-        <article className="panel panel-response">
-          <h2>Text response</h2>
+        <article className="card">
+          <h2 className="card-label">Reply</h2>
           {status === 'processing' && (
-            <p className="panel-body panel-muted">Generating response…</p>
+            <p className="card-body card-body--muted">Composing reply…</p>
           )}
           {latestTurn && status !== 'processing' && (
-            <p className="panel-body panel-response-text">{latestTurn.response}</p>
+            <p className="card-body card-body--reply">{latestTurn.response}</p>
           )}
           {!latestTurn && status !== 'processing' && (
-            <p className="panel-body panel-muted">Responses appear here after you finish speaking.</p>
+            <p className="card-body card-body--muted">Your answer will show up here after a pause.</p>
           )}
         </article>
       </div>
 
-      {turns.length > 0 && (
-        <section className="conversation-history" aria-label="Conversation history">
-          <h2>History</h2>
+      {turns.length > 1 && (
+        <section className="history" aria-label="Earlier turns">
+          <h2>Earlier</h2>
           <ol className="history-list">
-            {turns.map((turn) => (
+            {turns.slice(0, -1).reverse().map((turn) => (
               <li key={turn.id} className="history-item">
-                <p className="history-you">
-                  <span className="history-label">You</span>
+                <p>
+                  <span className="history-tag">You</span>
                   {turn.transcript}
                 </p>
-                <p className="history-assistant">
-                  <span className="history-label">Assistant</span>
+                <p>
+                  <span className="history-tag">Reply</span>
                   {turn.response}
                 </p>
               </li>
