@@ -49,7 +49,8 @@ export function ConversationPanel() {
     notices.push({
       text: (
         <>
-          Add <code>VITE_API_TOKEN</code> to <code>.env</code>, then restart the dev server.
+          Add your Cursor API key (<code>VITE_API_TOKEN</code>, starts with <code>crsr_</code>) to{' '}
+          <code>.env</code>, then restart <code>npm run dev</code>.
         </>
       ),
     })

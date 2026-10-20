@@ -1,5 +1,9 @@
 import { useCallback, useState } from 'react'
-import { fetchConversationResponse, isApiConfigured } from '../services/conversationApi'
+import {
+  fetchConversationResponse,
+  isApiConfigured,
+  resetConversationSession,
+} from '../services/conversationApi'
 import type { ApiError } from '../types'
 import type { ConversationTurn, ListenerStatus } from '../types/conversation'
 import { useSpeechRecognition } from './useSpeechRecognition'
@@ -52,7 +56,9 @@ export function useConversationListener() {
       return
     }
     if (!isApiConfigured()) {
-      setErrorMessage('Add VITE_API_TOKEN to your .env file, then restart the dev server.')
+      setErrorMessage(
+        'Add your Cursor API key (VITE_API_TOKEN, crsr_…) to .env, then restart npm run dev.',
+      )
       setStatus('error')
       return
     }
@@ -67,6 +73,7 @@ export function useConversationListener() {
   }, [])
 
   const clearHistory = useCallback(() => {
+    resetConversationSession()
     setTurns([])
     setLastTranscript('')
     setErrorMessage(null)
