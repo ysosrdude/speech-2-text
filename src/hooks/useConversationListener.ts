@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import {
   fetchConversationResponse,
   isApiConfigured,
+  isRemoteProxyMode,
   resetConversationSession,
 } from '../services/conversationApi'
 import type { ApiError } from '../types'
@@ -57,7 +58,9 @@ export function useConversationListener() {
     }
     if (!isApiConfigured()) {
       setErrorMessage(
-        'Add your Cursor API key (VITE_API_TOKEN, crsr_…) to .env, then restart npm run dev.',
+        isRemoteProxyMode()
+          ? 'Set VITE_API_BASE_URL to your hosted proxy (e.g. https://your-app.vercel.app/api/cursor).'
+          : 'Add VITE_API_TOKEN (crsr_…) to .env for local dev, then restart npm run dev.',
       )
       setStatus('error')
       return

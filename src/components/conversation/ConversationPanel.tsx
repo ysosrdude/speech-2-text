@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useConversationListener } from '../../hooks/useConversationListener'
+import { isRemoteProxyMode } from '../../services/conversationApi'
 import type { ListenerStatus } from '../../types/conversation'
 import '../../styles/conversation.css'
 
@@ -47,10 +48,15 @@ export function ConversationPanel() {
     })
   } else if (!apiConfigured) {
     notices.push({
-      text: (
+      text: isRemoteProxyMode() ? (
         <>
-          Add your Cursor API key (<code>VITE_API_TOKEN</code>, starts with <code>crsr_</code>) to{' '}
-          <code>.env</code>, then restart <code>npm run dev</code>.
+          Set <code>VITE_API_BASE_URL</code> to your Vercel proxy URL (see README). Put the{' '}
+          <code>crsr_</code> key only on Vercel as <code>CURSOR_API_KEY</code>.
+        </>
+      ) : (
+        <>
+          Local: add <code>VITE_API_TOKEN</code> (<code>crsr_…</code>) to <code>.env</code> and
+          restart <code>npm run dev</code>. StackBlitz: use a Vercel proxy URL instead (README).
         </>
       ),
     })

@@ -1,0 +1,63 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+
+const CURSOR_API = 'https://api.cursor.com'
+
+function setCors(res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(res)
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
+  }
+
+  const apiKey = process.env.CURSOR_API_KEY?.trim() || process.env.VITE_API_TOKEN?.trim()
+  if (!apiKey) {
+    res.status(500).json({
+      code: 'missing_token',
+      message: 'Set CURSOR_API_KEY (or VITE_API_TOKEN) in the deployment environment.',
+    })
+    return
+  }
+
+  const segments = req.query.path
+  const pathParts = Array.isArray(segments) ? segments : segments ? [segments] : []
+  const upstreamPath = `/${pathParts.join('/')}`
+
+  try {
+    const upstream = await fetch(`${CURSOR_API}${upstreamPath}`, {
+      method: req.method,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: 'application/json',
+        ...(req.headers['content-type']
+          ? { 'Content-Type': String(req.headers['content-type']) }
+          : {}),
+      },
+      body:
+        req.method === 'GET' || req.method === 'HEAD'
+          ? undefined
+          : req.body
+            ? JSON.stringify(req.body)
+            : undefined,
+    })
+
+    const body = Buffer.from(await upstream.arrayBuffer())
+    res.status(upstream.status)
+    const contentType = upstream.headers.get('content-type')
+    if (contentType) {
+      res.setHeader('Content-Type', contentType)
+    }
+    res.end(body)
+  } catch {
+    res.status(502).json({
+      code: 'proxy_unreachable',
+      message: 'Could not reach api.cursor.com from the hosted proxy.',
+    })
+  }
+}

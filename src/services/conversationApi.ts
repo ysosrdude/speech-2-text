@@ -35,12 +35,24 @@ function getApiConfig() {
   return { token, baseUrl, model }
 }
 
-function usesDevProxy(baseUrl: string) {
+/** Same-origin Vite/Vercel proxy (`/api/cursor`). */
+function usesLocalProxy(baseUrl: string) {
   return baseUrl.startsWith('/')
 }
 
+/** Hosted proxy (e.g. Vercel) — API key stays on the server. */
+function usesRemoteProxy(baseUrl: string) {
+  return baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+}
+
 export function isApiConfigured(): boolean {
-  return Boolean(getApiConfig().token)
+  const { token, baseUrl } = getApiConfig()
+  if (usesRemoteProxy(baseUrl)) return true
+  return Boolean(token)
+}
+
+export function isRemoteProxyMode(): boolean {
+  return usesRemoteProxy(getApiConfig().baseUrl)
 }
 
 export function resetConversationSession() {
@@ -61,7 +73,7 @@ async function cursorRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
   headers.set('Content-Type', 'application/json')
 
-  if (!usesDevProxy(baseUrl)) {
+  if (usesLocalProxy(baseUrl)) {
     if (!token) {
       const error: ApiError = {
         message: 'Missing VITE_API_TOKEN. Add your Cursor API key to .env and restart the dev server.',
@@ -69,7 +81,6 @@ async function cursorRequest<T>(path: string, init?: RequestInit): Promise<T> {
       }
       throw error
     }
-    headers.set('Authorization', `Bearer ${token}`)
   }
 
   const response = await fetch(`${baseUrl}${path}`, {
@@ -93,9 +104,9 @@ async function cursorRequest<T>(path: string, init?: RequestInit): Promise<T> {
       message = payload.message ?? message
     } else if (response.status === 502) {
       message =
-        'Dev proxy could not reach Cursor (502). On StackBlitz, run the app locally with npm run dev, or deploy a server-side proxy.'
+        'Could not reach Cursor through the proxy (502). On StackBlitz, point VITE_API_BASE_URL at a Vercel deploy (see README).'
     } else if (response.status === 500 && payload.code === 'missing_token') {
-      message = payload.message ?? 'Missing VITE_API_TOKEN in .env — restart the dev server after adding it.'
+      message = payload.message ?? 'Proxy is missing CURSOR_API_KEY on the server.'
     }
 
     const error: ApiError = {
@@ -181,20 +192,11 @@ async function createFollowUpRun(agentId: string, transcript: string) {
 export async function fetchConversationResponse(transcript: string): Promise<string> {
   const { token, baseUrl } = getApiConfig()
 
-  if (!token) {
+  if (usesLocalProxy(baseUrl) && !token) {
     const error: ApiError = {
       message:
-        'Missing VITE_API_TOKEN. Create a Cursor API key (crsr_…) in the dashboard, add it to .env, and restart npm run dev.',
+        'Missing VITE_API_TOKEN. Add your Cursor API key (crsr_…) to .env and restart npm run dev.',
       code: 'missing_token',
-    }
-    throw error
-  }
-
-  if (!usesDevProxy(baseUrl)) {
-    const error: ApiError = {
-      message:
-        'Direct browser calls to api.cursor.com are blocked by CORS. Use the default VITE_API_BASE_URL=/api/cursor with npm run dev.',
-      code: 'cors',
     }
     throw error
   }

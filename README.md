@@ -7,30 +7,56 @@ A lightweight React app that listens to live speech, detects when you finish an 
 - **Live microphone input** via the browser Web Speech API (Chrome, Edge, Safari)
 - **Pause-to-send**: when you stop speaking, the transcript is sent to Cursor
 - **On-screen responses** with a scrollable history of turns
-- **Cursor API key in `.env`** (`crsr_…`) — proxied locally so the browser never calls OpenAI
+- **Cursor API key** (`crsr_…`) kept on the server via a proxy (local Vite or Vercel)
 
-## Getting started
+## Option A — Local development (recommended)
 
 ```bash
 npm install
 cp .env.example .env
 ```
 
-1. Open [Cursor Dashboard → Integrations → User API Keys](https://cursor.com/dashboard?tab=integrations).
-2. Create a key (`crsr_…`) and set `VITE_API_TOKEN` in `.env`.
-3. Keep `VITE_API_BASE_URL=/api/cursor` (default). **Do not** use `api.openai.com` with a Cursor key.
+1. [Cursor Dashboard → Integrations → User API Keys](https://cursor.com/dashboard?tab=integrations) → create `crsr_…`
+2. In `.env`:
 
-```bash
-npm run dev
+```env
+VITE_API_TOKEN=crsr_your_key
+VITE_API_BASE_URL=/api/cursor
+VITE_API_MODEL=composer-2.5
 ```
 
-Open [http://localhost:5173](http://localhost:5173), allow microphone access, and click **Start listening**.
+3. `npm run dev` → [http://localhost:5173](http://localhost:5173)
 
-### StackBlitz note
+## Option B — StackBlitz (use a Vercel proxy)
 
-StackBlitz/WebContainer dev servers often fail to proxy to `api.cursor.com` (`socket hang up` / **502**). That is an environment network limit, not a bad API key. **Clone the repo and run `npm run dev` locally** (or deploy with a server-side proxy) for reliable Cursor API access.
+StackBlitz **cannot** reach `api.cursor.com` from its dev server (`socket hang up` / **502**). Use a hosted proxy:
 
-### Scripts
+### 1. Deploy to Vercel
+
+- Import this GitHub repo in [Vercel](https://vercel.com/new)
+- Add environment variable: **`CURSOR_API_KEY`** = your `crsr_…` key (Production)
+- Deploy (uses `vercel.json` + `api/cursor/[...path].ts`)
+
+### 2. Point StackBlitz at the proxy
+
+In StackBlitz `.env` (no API key in the browser):
+
+```env
+VITE_API_BASE_URL=https://YOUR-PROJECT.vercel.app/api/cursor
+VITE_API_MODEL=composer-2.5
+```
+
+Restart the StackBlitz dev server. The app calls your Vercel URL; Vercel calls Cursor with `CURSOR_API_KEY`.
+
+### Full proxy URL shape
+
+| Piece | Example |
+| ----- | ------- |
+| Vercel deployment | `https://speech-2-text-abc.vercel.app` |
+| Proxy base (`VITE_API_BASE_URL`) | `https://speech-2-text-abc.vercel.app/api/cursor` |
+| Example API call | `https://speech-2-text-abc.vercel.app/api/cursor/v1/agents` |
+
+## Scripts
 
 | Command           | Description              |
 | ----------------- | ------------------------ |
@@ -41,18 +67,16 @@ StackBlitz/WebContainer dev servers often fail to proxy to `api.cursor.com` (`so
 
 ## Environment variables
 
-Restart `npm run dev` after editing `.env`.
-
-| Variable              | Required | Description |
-| --------------------- | -------- | ----------- |
-| `VITE_API_TOKEN`      | Yes      | Cursor user API key (`crsr_…`) |
-| `VITE_API_BASE_URL`   | No       | Default `/api/cursor` (Vite proxy to `api.cursor.com`) |
-| `VITE_API_MODEL`      | No       | Optional Cursor model id (e.g. `composer-2.5`) |
-
-The dev server injects your key on proxied requests so it is not sent from browser JavaScript. Avoid deploying the static build alone with a client-exposed key; use a server proxy for production.
+| Variable | Local dev | StackBlitz + Vercel |
+| -------- | --------- | ------------------- |
+| `VITE_API_TOKEN` | Yes (`crsr_…` in `.env`) | Leave empty |
+| `VITE_API_BASE_URL` | `/api/cursor` | `https://….vercel.app/api/cursor` |
+| `VITE_API_MODEL` | `composer-2.5` (optional) | Same |
+| `CURSOR_API_KEY` | — | Set on **Vercel** only |
 
 ## Tech stack
 
 - React + Vite + TypeScript
-- Web Speech API for recognition
-- [Cursor Cloud Agents API](https://cursor.com/docs/cloud-agent/api/endpoints) (`POST /v1/agents`, follow-up runs, poll for `result`)
+- Web Speech API
+- [Cursor Cloud Agents API](https://cursor.com/docs/cloud-agent/api/endpoints)
+- Vercel serverless proxy (`api/cursor/[...path].ts`) with CORS for cross-origin frontends
