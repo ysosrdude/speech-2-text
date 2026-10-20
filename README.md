@@ -35,7 +35,8 @@ StackBlitz **cannot** reach `api.cursor.com` from its dev server (`socket hang u
 
 - Import this GitHub repo in [Vercel](https://vercel.com/new)
 - Add environment variable: **`CURSOR_API_KEY`** = your `crsr_…` key (Production)
-- Deploy (uses `vercel.json` + `api/cursor/[...path].ts`)
+- Redeploy after env changes (uses `vercel.json` + `api/cursor-handler.ts`)
+- Test: `https://YOUR-PROJECT.vercel.app/api/cursor/v1/me` should **not** be a Vercel 404
 
 ### 2. Point StackBlitz at the proxy
 
@@ -72,7 +73,9 @@ Restart the StackBlitz dev server. The app calls your Vercel URL; Vercel calls C
 | `VITE_API_TOKEN` | Yes (`crsr_…` in `.env`) | Leave empty |
 | `VITE_API_BASE_URL` | `/api/cursor` | `https://….vercel.app/api/cursor` |
 | `VITE_API_MODEL` | `composer-2.5` (optional) | Same |
-| `CURSOR_API_KEY` | — | Set on **Vercel** only |
+| `CURSOR_API_KEY` | — | Set on **Vercel** only (runtime proxy; required) |
+
+On Vercel you do **not** need `VITE_API_TOKEN` if you use `VITE_API_BASE_URL=/api/cursor` on the same deployment — use **`CURSOR_API_KEY`** only so the key is not baked into the client bundle.
 
 ## Tech stack
 

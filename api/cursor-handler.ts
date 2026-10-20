@@ -20,14 +20,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!apiKey) {
     res.status(500).json({
       code: 'missing_token',
-      message: 'Set CURSOR_API_KEY (or VITE_API_TOKEN) in the deployment environment.',
+      message: 'Set CURSOR_API_KEY in Vercel → Settings → Environment Variables, then redeploy.',
     })
     return
   }
 
-  const segments = req.query.path
-  const pathParts = Array.isArray(segments) ? segments : segments ? [segments] : []
-  const upstreamPath = `/${pathParts.join('/')}`
+  const pathParam = req.query.path
+  const pathSuffix =
+    typeof pathParam === 'string'
+      ? pathParam
+      : Array.isArray(pathParam)
+        ? pathParam.join('/')
+        : ''
+
+  if (!pathSuffix) {
+    res.status(200).json({
+      ok: true,
+      message: 'Cursor proxy is running. Call /api/cursor/v1/me or /api/cursor/v1/agents.',
+    })
+    return
+  }
+
+  const upstreamPath = `/${pathSuffix}`
 
   try {
     const upstream = await fetch(`${CURSOR_API}${upstreamPath}`, {
