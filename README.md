@@ -1,46 +1,24 @@
 # speech-2-text
 
-A simple lightweight application that inputs natural language and utilises NLP to convert it into text-based responses or answers.
+A lightweight React app that listens to live speech, detects when you finish an utterance, and shows a text response on screen using an OpenAI-compatible chat API.
 
-This repository includes a **React + Vite + TypeScript** folder structure template you can grow into a full product.
+## Features
 
-## Folder structure
-
-```
-.
-├── public/                 # Static assets served as-is (favicon, robots.txt, etc.)
-├── src/
-│   ├── assets/             # Images, fonts, and files imported by components
-│   ├── components/
-│   │   ├── layout/         # App shell, headers, footers
-│   │   └── ui/             # Reusable presentational components
-│   ├── constants/          # App-wide constants and copy
-│   ├── hooks/              # Custom React hooks
-│   ├── pages/              # Route-level / screen components
-│   ├── routes/             # Route config (wire up react-router here)
-│   ├── services/           # API clients and external integrations
-│   ├── styles/             # Global CSS and shared style tokens
-│   ├── types/              # Shared TypeScript types
-│   ├── utils/              # Pure helper functions
-│   ├── App.tsx             # Root component
-│   └── main.tsx            # Application entry point
-├── .env.example            # Documented environment variables
-├── index.html              # Vite HTML entry
-├── package.json
-├── tsconfig.json           # TypeScript project references
-├── tsconfig.app.json
-├── tsconfig.node.json
-└── vite.config.ts
-```
+- **Live microphone input** via the browser Web Speech API (Chrome, Edge, Safari)
+- **Pause-to-send**: when you stop speaking, the transcript is sent to the API
+- **On-screen responses** with a scrollable history of turns
+- **Env-based API token** — no secrets committed to the repo
 
 ## Getting started
 
 ```bash
 npm install
+cp .env.example .env
+# Edit .env and set VITE_API_TOKEN
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:5173](http://localhost:5173), allow microphone access, and click **Start listening**.
 
 ### Scripts
 
@@ -53,10 +31,28 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## Environment variables
 
-Copy `.env.example` to `.env` and set values as needed. Variables prefixed with `VITE_` are exposed to the client via `import.meta.env`.
+Copy `.env.example` to `.env`. Restart the dev server after changes.
+
+| Variable             | Required | Description                                      |
+| -------------------- | -------- | ------------------------------------------------ |
+| `VITE_API_TOKEN`     | Yes      | Bearer token for chat completions                |
+| `VITE_API_BASE_URL`  | No       | API base URL (default: `https://api.openai.com/v1`) |
+| `VITE_API_MODEL`     | No       | Model name (default: `gpt-4o-mini`)              |
+
+Variables prefixed with `VITE_` are bundled into the client. For production, prefer a small backend proxy so the token is not exposed in the browser.
+
+## Folder structure
+
+```
+src/
+├── components/conversation/   # Live listener UI
+├── hooks/                     # Speech + conversation orchestration
+├── services/conversationApi.ts
+└── ...
+```
 
 ## Tech stack
 
-- [React](https://react.dev/)
-- [Vite](https://vite.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
+- [React](https://react.dev/) + [Vite](https://vite.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- Web Speech API for recognition
+- OpenAI-compatible `POST /chat/completions`
